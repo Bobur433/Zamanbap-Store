@@ -340,3 +340,14 @@ button, input, select, textarea { touch-action: manipulation; -webkit-tap-highli
     .admin-item-actions .btn { width: 100%; }
     .detail-layout { gap: .75rem; }
 }
+
+/* --- Мобильная подсветка формы при нажатии "Добавить телефон" --- */
+.admin-form-section.form-flash {
+    animation: formFlash 0.6s ease;
+}
+
+@keyframes formFlash {
+    0% { box-shadow: 0 0 0 3px rgba(122, 122, 158, 0); }
+    30% { box-shadow: 0 0 0 3px rgba(122, 122, 158, 0.55); }
+    100% { box-shadow: 0 0 0 3px rgba(122, 122, 158, 0); }
+}

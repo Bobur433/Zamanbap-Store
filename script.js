@@ -1,4 +1,9 @@
+'use strict';
+
 const STORAGE_KEY = 'zamanbap_store_phones_v1';
+const THEME_KEY = 'zamanbap_theme';
+
+/* ---------- helpers ---------- */
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -10,8 +15,12 @@ function escapeHtml(value) {
 }
 
 function getPhones() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch (error) { return []; }
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (error) {
+        console.error('getPhones failed', error);
+        return [];
+    }
 }
 
 function savePhones(phones) {
@@ -19,7 +28,9 @@ function savePhones(phones) {
 }
 
 function generateId() {
-    return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `phone-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `phone-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function formatPrice(value) {
@@ -44,7 +55,6 @@ function setImagePreview(previewElement, dataUrl, emptyText) {
         previewElement.classList.remove('is-filled');
         return;
     }
-
     previewElement.innerHTML = `<img src="${dataUrl}" alt="Предпросмотр фотографии">`;
     previewElement.classList.add('is-filled');
 }
@@ -59,15 +69,15 @@ function handleImageSelection(inputId, previewId, emptyText) {
         setImagePreview(preview, '', emptyText);
         return;
     }
-
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(preview, reader.result, emptyText);
-    reader.readAsDataURL(file);
+    readFileAsDataUrl(file).then((dataUrl) => setImagePreview(preview, dataUrl, emptyText));
 }
+
+/* ---------- visual fx (index page only) ---------- */
 
 function createParticles() {
     const container = document.getElementById('particles');
     if (!container) return;
+    const fragment = document.createDocumentFragment();
     for (let i = 0; i < 32; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
@@ -78,14 +88,16 @@ function createParticles() {
         particle.style.opacity = Math.random() * 0.3 + 0.15;
         particle.style.animationDuration = (Math.random() * 8 + 6) + 's';
         particle.style.animationDelay = Math.random() * 4 + 's';
-        container.appendChild(particle);
+        fragment.appendChild(particle);
     }
+    container.appendChild(fragment);
 }
 
 function startAnimations() {
     const elements = document.querySelectorAll('[data-animate]');
+    if (!elements.length) return;
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
             if (entry.isIntersecting) {
                 const delay = entry.target.dataset.delay || 0;
                 setTimeout(() => entry.target.classList.add('animated'), Number(delay));
@@ -93,43 +105,44 @@ function startAnimations() {
             }
         });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    elements.forEach(el => observer.observe(el));
+    elements.forEach((el) => observer.observe(el));
 }
 
 function animateCounters() {
     const counters = document.querySelectorAll('[data-count]');
     if (!counters.length) return;
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const target = Number(entry.target.dataset.count);
-                const duration = 1800;
-                const step = target / (duration / 16);
-                let current = 0;
-                const timer = setInterval(() => {
-                    current += step;
-                    if (current >= target) {
-                        current = target;
-                        clearInterval(timer);
-                    }
-                    entry.target.textContent = Math.floor(current);
-                }, 16);
-                observer.unobserve(entry.target);
-            }
+        entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const target = Number(entry.target.dataset.count);
+            const duration = 1800;
+            const step = target / (duration / 16);
+            let current = 0;
+            const timer = setInterval(() => {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                entry.target.textContent = Math.floor(current);
+            }, 16);
+            observer.unobserve(entry.target);
         });
     }, { threshold: 0.5 });
-    counters.forEach(counter => observer.observe(counter));
+    counters.forEach((counter) => observer.observe(counter));
 }
+
+/* ---------- navigation ---------- */
 
 function initNavigation() {
     const navbar = document.getElementById('navbar');
     const navToggle = document.getElementById('navToggle');
     const navMenu = document.getElementById('navMenu');
 
-    function handleScroll() {
+    const handleScroll = () => {
         if (navbar) navbar.classList.toggle('scrolled', window.scrollY > 40);
-    }
-    window.addEventListener('scroll', handleScroll);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
     if (navToggle && navMenu) {
@@ -138,7 +151,7 @@ function initNavigation() {
             navMenu.classList.toggle('active');
             document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
         });
-        navMenu.querySelectorAll('.nav-link').forEach(link => {
+        navMenu.querySelectorAll('.nav-link').forEach((link) => {
             link.addEventListener('click', () => {
                 navToggle.classList.remove('active');
                 navMenu.classList.remove('active');
@@ -149,37 +162,40 @@ function initNavigation() {
 }
 
 function initSmoothScroll() {
-    document.querySelectorAll('a[href^="#"]').forEach(link => {
+    document.querySelectorAll('a[href^="#"]').forEach((link) => {
         link.addEventListener('click', (event) => {
             const targetId = link.getAttribute('href');
             if (!targetId || targetId === '#') return;
             const target = document.querySelector(targetId);
-            if (!target) return;
+            const navbar = document.getElementById('navbar');
+            if (!target || !navbar) return;
             event.preventDefault();
-            const offset = document.getElementById('navbar').offsetHeight + 20;
+            const offset = navbar.offsetHeight + 20;
             const top = target.getBoundingClientRect().top + window.scrollY - offset;
             window.scrollTo({ top, behavior: 'smooth' });
         });
     });
 }
 
+/* ---------- catalog / product page ---------- */
+
 function renderCatalog() {
     const grid = document.getElementById('catalogGrid');
     if (!grid) return;
     const phones = getPhones();
+
     if (!phones.length) {
         grid.innerHTML = `
             <div class="empty-state">
                 <h3>Пока нет товаров</h3>
                 <p>Каталог будет наполняться после добавления телефона через админ-панель.</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
 
     grid.innerHTML = phones.map((phone) => {
         const imageMarkup = phone.frontImage
-            ? `<img src="${phone.frontImage}" alt="${escapeHtml(phone.model)}">`
+            ? `<img src="${phone.frontImage}" alt="${escapeHtml(phone.model)}" loading="lazy">`
             : '<div class="photo-placeholder">Фото скоро появится</div>';
         return `
             <article class="product-card">
@@ -195,9 +211,8 @@ function renderCatalog() {
                     <span>${escapeHtml(phone.state || 'Состояние не указано')}</span>
                 </div>
                 <p>${escapeHtml(phone.specs || 'Характеристики будут добавлены владельцем')}</p>
-                <a class="btn btn-primary" href="product.html?id=${phone.id}">Подробнее</a>
-            </article>
-        `;
+                <a class="btn btn-primary" href="product.html?id=${encodeURIComponent(phone.id)}">Подробнее</a>
+            </article>`;
     }).join('');
 }
 
@@ -205,14 +220,14 @@ function renderProductPage() {
     const container = document.getElementById('productContent');
     if (!container) return;
     const id = new URLSearchParams(window.location.search).get('id');
-    const phone = getPhones().find(item => item.id === id);
+    const phone = getPhones().find((item) => item.id === id);
+
     if (!phone) {
         container.innerHTML = `
             <div class="empty-state">
                 <h3>Телефон не найден</h3>
                 <p>Возможно, товар был удалён из базы магазина.</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
 
@@ -246,19 +261,22 @@ function renderProductPage() {
                     </div>
                 </div>
             </div>
-        </article>
-    `;
+        </article>`;
 }
+
+/* ---------- admin page ---------- */
 
 function renderAdminPhones() {
     const container = document.getElementById('adminPhones');
     if (!container) return;
     const phones = getPhones();
+
     if (!phones.length) {
-        container.innerHTML = '<div class="empty-state"><h3>Список пуст</h3><p>Добавьте первый телефон через форму.</p></div>';
+        container.innerHTML = '<div class="empty-state"><h3>Список пуст</h3><p>Добавьте первый телефон через форму выше.</p></div>';
         return;
     }
-    container.innerHTML = phones.map(phone => `
+
+    container.innerHTML = phones.map((phone) => `
         <div class="admin-item">
             <div>
                 <strong>${escapeHtml(phone.model)}</strong>
@@ -268,14 +286,28 @@ function renderAdminPhones() {
                 <button class="btn btn-secondary" type="button" data-action="edit" data-id="${phone.id}">Редактировать</button>
                 <button class="btn btn-primary" type="button" data-action="delete" data-id="${phone.id}">Удалить</button>
             </div>
-        </div>
-    `).join('');
+        </div>`).join('');
+}
+
+function setFormMode(submitButton, mode) {
+    if (!submitButton) return;
+    submitButton.textContent = mode === 'edit' ? 'Сохранить изменения' : 'Добавить телефон';
+}
+
+function flashSection(section) {
+    if (!section) return;
+    section.classList.remove('form-flash');
+    // force reflow so the animation can restart on repeated taps
+    void section.offsetWidth;
+    section.classList.add('form-flash');
 }
 
 async function handleSubmit(event) {
     event.preventDefault();
     const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
     const idField = document.getElementById('phoneId');
+
     const model = document.getElementById('model').value.trim();
     const brand = document.getElementById('brand').value.trim();
     const price = document.getElementById('price').value.trim();
@@ -293,42 +325,49 @@ async function handleSubmit(event) {
         return;
     }
 
-    const phones = getPhones();
-    const currentPhone = phones.find(item => item.id === idField.value);
-    const frontImage = await readFileAsDataUrl(frontImageFile);
-    const backImage = await readFileAsDataUrl(backImageFile);
+    if (submitButton) submitButton.disabled = true;
 
-    const phoneData = {
-        id: idField.value || generateId(),
-        model,
-        brand,
-        price,
-        memory,
-        color,
-        state,
-        specs,
-        features,
-        defects,
-        frontImage: frontImage || currentPhone?.frontImage || '',
-        backImage: backImage || currentPhone?.backImage || ''
-    };
+    try {
+        const phones = getPhones();
+        const currentPhone = phones.find((item) => item.id === idField.value);
+        const [frontImage, backImage] = await Promise.all([
+            readFileAsDataUrl(frontImageFile),
+            readFileAsDataUrl(backImageFile)
+        ]);
 
-    const index = phones.findIndex(item => item.id === phoneData.id);
-    if (index >= 0) phones[index] = phoneData;
-    else phones.unshift(phoneData);
+        const phoneData = {
+            id: idField.value || generateId(),
+            model, brand, price, memory, color, state, specs, features, defects,
+            frontImage: frontImage || currentPhone?.frontImage || '',
+            backImage: backImage || currentPhone?.backImage || ''
+        };
 
-    savePhones(phones);
-    form.reset();
-    idField.value = '';
-    document.querySelector('.phone-form button[type="submit"]').textContent = 'Добавить телефон';
-    renderCatalog();
-    renderAdminPhones();
-    alert('Телефон сохранён и появился в каталоге');
+        const index = phones.findIndex((item) => item.id === phoneData.id);
+        if (index >= 0) phones[index] = phoneData;
+        else phones.unshift(phoneData);
+
+        savePhones(phones);
+
+        form.reset();
+        idField.value = '';
+        setFormMode(submitButton, 'add');
+        setImagePreview(document.getElementById('frontImagePreview'), '', 'Снимок появится здесь');
+        setImagePreview(document.getElementById('backImagePreview'), '', 'Снимок появится здесь');
+        renderCatalog();
+        renderAdminPhones();
+        alert('Телефон сохранён и появился в каталоге');
+    } catch (error) {
+        console.error('handleSubmit failed', error);
+        alert('Не удалось сохранить товар. Скорее всего, фотографии слишком тяжёлые для памяти браузера — попробуйте снимки поменьше или без одной из фотографий.');
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
 }
 
 function fillFormForEdit(id) {
-    const phone = getPhones().find(item => item.id === id);
+    const phone = getPhones().find((item) => item.id === id);
     if (!phone) return;
+
     document.getElementById('phoneId').value = phone.id;
     document.getElementById('model').value = phone.model || '';
     document.getElementById('brand').value = phone.brand || '';
@@ -341,12 +380,18 @@ function fillFormForEdit(id) {
     document.getElementById('defects').value = phone.defects || '';
     setImagePreview(document.getElementById('frontImagePreview'), phone.frontImage || '', 'Снимок появится здесь');
     setImagePreview(document.getElementById('backImagePreview'), phone.backImage || '', 'Снимок появится здесь');
-    document.querySelector('.phone-form button[type="submit"]').textContent = 'Сохранить изменения';
-    document.getElementById('model').focus();
+
+    const form = document.getElementById('phoneForm');
+    setFormMode(form.querySelector('button[type="submit"]'), 'edit');
+    flashSection(form.closest('section'));
+
+    const formTop = form.getBoundingClientRect().top + window.scrollY - 90;
+    window.scrollTo({ top: formTop, behavior: 'smooth' });
+    document.getElementById('model').focus({ preventScroll: true });
 }
 
 function deletePhone(id) {
-    const phones = getPhones().filter(item => item.id !== id);
+    const phones = getPhones().filter((item) => item.id !== id);
     savePhones(phones);
     renderCatalog();
     renderAdminPhones();
@@ -354,16 +399,16 @@ function deletePhone(id) {
 
 function initAdminPage() {
     const form = document.getElementById('phoneForm');
-    const resetButton = document.getElementById('resetForm');
-    const addPhoneButton = document.getElementById('openAddPhoneButton');
-    const submitButton = form?.querySelector('button[type="submit"]');
-    const formSection = form?.closest('section');
     if (!form) return;
+
+    const resetButton = document.getElementById('resetForm');
+    const newPhoneButton = document.getElementById('openAddPhoneButton');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const formSection = form.closest('section');
 
     document.querySelectorAll('[data-trigger-image]').forEach((button) => {
         button.addEventListener('click', () => {
-            const input = document.getElementById(button.dataset.triggerImage);
-            if (input) input.click();
+            document.getElementById(button.dataset.triggerImage)?.click();
         });
     });
 
@@ -374,29 +419,24 @@ function initAdminPage() {
         handleImageSelection('backImage', 'backImagePreview', 'Снимок появится здесь');
     });
 
-    const openAddPhoneForm = (event) => {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
+    // "Добавить телефон" в шапке: явно сбрасывает форму в режим добавления
+    // (полезно, если до этого редактировали товар) и всегда даёт видимый
+    // отклик — подсветку блока и фокус на первом поле — даже если форма
+    // и так была видна на экране. Один click-обработчик, без конфликтов.
+    newPhoneButton?.addEventListener('click', () => {
+        form.reset();
+        document.getElementById('phoneId').value = '';
+        document.getElementById('frontImage').value = '';
+        document.getElementById('backImage').value = '';
+        setImagePreview(document.getElementById('frontImagePreview'), '', 'Снимок появится здесь');
+        setImagePreview(document.getElementById('backImagePreview'), '', 'Снимок появится здесь');
+        setFormMode(submitButton, 'add');
+        flashSection(formSection);
 
-        const formTop = (formSection?.getBoundingClientRect().top || form.getBoundingClientRect().top) + window.scrollY - 90;
+        const formTop = formSection.getBoundingClientRect().top + window.scrollY - 90;
         window.scrollTo({ top: formTop, behavior: 'smooth' });
-
-        requestAnimationFrame(() => {
-            document.getElementById('model')?.focus({ preventScroll: true });
-        });
-
-        if (submitButton) {
-            submitButton.textContent = 'Добавить телефон';
-        }
-    };
-
-    addPhoneButton?.addEventListener('click', openAddPhoneForm);
-    addPhoneButton?.addEventListener('touchstart', openAddPhoneForm, { passive: false });
-    addPhoneButton?.addEventListener('touchend', openAddPhoneForm, { passive: false });
-    addPhoneButton?.addEventListener('pointerdown', openAddPhoneForm);
-    addPhoneButton?.addEventListener('mousedown', openAddPhoneForm);
+        document.getElementById('model')?.focus({ preventScroll: true });
+    });
 
     submitButton?.addEventListener('click', (event) => {
         if (!form.checkValidity()) {
@@ -406,6 +446,7 @@ function initAdminPage() {
     });
 
     form.addEventListener('submit', handleSubmit);
+
     resetButton?.addEventListener('click', () => {
         form.reset();
         document.getElementById('phoneId').value = '';
@@ -413,74 +454,58 @@ function initAdminPage() {
         document.getElementById('backImage').value = '';
         setImagePreview(document.getElementById('frontImagePreview'), '', 'Снимок появится здесь');
         setImagePreview(document.getElementById('backImagePreview'), '', 'Снимок появится здесь');
-        submitButton.textContent = 'Добавить телефон';
+        setFormMode(submitButton, 'add');
     });
 
     document.getElementById('adminPhones')?.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-action]');
         if (!button) return;
-        const action = button.dataset.action;
-        const id = button.dataset.id;
+        const { action, id } = button.dataset;
         if (action === 'edit') return fillFormForEdit(id);
         if (action === 'delete' && confirm('Удалить телефон из магазина?')) deletePhone(id);
     });
+
     renderAdminPhones();
 }
 
+/* ---------- theme ---------- */
+
 function initTheme() {
-    const THEME_KEY = 'zamanbap_theme';
     const htmlRoot = document.documentElement;
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
 
-    function updateThemeIcon(currentTheme) {
-        if (themeIcon) {
-            themeIcon.textContent = currentTheme === 'light' ? '🌙' : '☀️';
-        }
-    }
+    const getSystemTheme = () => (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-    function getSystemTheme() {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
+    const applyTheme = (theme) => {
+        const resolved = theme === 'system' ? getSystemTheme() : theme;
+        if (theme === 'system') htmlRoot.removeAttribute('data-theme');
+        else htmlRoot.setAttribute('data-theme', theme);
+        if (themeIcon) themeIcon.textContent = resolved === 'light' ? '🌙' : '☀️';
+    };
 
-    function applyTheme(theme) {
-        if (theme === 'system') {
-            theme = getSystemTheme();
-            htmlRoot.removeAttribute('data-theme');
-        } else {
-            htmlRoot.setAttribute('data-theme', theme);
-        }
-        updateThemeIcon(theme);
-    }
-
-    function setTheme(theme) {
+    const setTheme = (theme) => {
         localStorage.setItem(THEME_KEY, theme);
         applyTheme(theme);
-    }
+    };
 
-    function toggleTheme() {
+    applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+    themeToggle?.addEventListener('click', () => {
         const current = localStorage.getItem(THEME_KEY) || 'dark';
-        const next = current === 'light' ? 'dark' : 'light';
-        setTheme(next);
-    }
-
-    // Initialize theme on page load
-    const saved = localStorage.getItem(THEME_KEY) || 'dark';
-    applyTheme(saved);
-
-    // Add click listener to toggle button
-    if (themeToggle) {
-        themeToggle.addEventListener('click', toggleTheme);
-    }
-
-    // Listen for system theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addListener(() => {
-        const current = localStorage.getItem(THEME_KEY);
-        if (current === 'system' || !current) {
-            applyTheme(getSystemTheme());
-        }
+        setTheme(current === 'light' ? 'dark' : 'light');
     });
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemChange = () => {
+        const current = localStorage.getItem(THEME_KEY);
+        if (!current || current === 'system') applyTheme(getSystemTheme());
+    };
+    if (media.addEventListener) media.addEventListener('change', onSystemChange);
+    else if (media.addListener) media.addListener(onSystemChange);
 }
+
+/* ---------- boot ---------- */
 
 function initApp() {
     initTheme();
@@ -489,6 +514,7 @@ function initApp() {
     animateCounters();
     initNavigation();
     initSmoothScroll();
+
     if (document.getElementById('catalogGrid')) renderCatalog();
     if (document.getElementById('productContent')) renderProductPage();
     if (document.getElementById('phoneForm')) initAdminPage();
