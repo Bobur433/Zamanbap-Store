@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Zamanbap Store</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="nav-logo">
+                <img class="logo-icon" src="logo.jpeg" alt="Zamanbap Store">
+                <span class="logo-text">Zamanbap<span class="logo-accent">Store</span></span>
+            </a>
+            <div class="nav-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему" title="Переключить тему">
+                    <span id="themeIcon">🌙</span>
+                </button>
+                <a href="index.html" class="nav-cta">Каталог</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="admin-page">
+        <div class="container admin-grid">
+            <section class="panel-card" data-animate="fade-up">
+                <div class="section-header">
+                    <span class="section-tag">Добавить товар</span>
+                    <h2 class="section-title">Форма телефона</h2>
+                </div>
+                <form id="phoneForm" class="phone-form">
+                    <input type="hidden" id="phoneId">
+                    <label>Название модели
+                        <input type="text" id="model" placeholder="Например iPhone 13 Pro" required>
+                    </label>
+                    <label>Бренд
+                        <input type="text" id="brand" placeholder="Apple" required>
+                    </label>
+                    <label>Цена (сом)
+                        <input type="number" id="price" placeholder="69990" required>
+                    </label>
+                    <label>Память
+                        <input type="text" id="memory" placeholder="256 ГБ">
+                    </label>
+                    <label>Цвет
+                        <input type="text" id="color" placeholder="Графитовый">
+                    </label>
+                    <label>Состояние
+                        <select id="state">
+                            <option value="Новое">Новое</option>
+                            <option value="Отличное">Отличное</option>
+                            <option value="Хорошее">Хорошее</option>
+                            <option value="Есть дефекты">Есть дефекты</option>
+                        </select>
+                    </label>
+                    <label>Характеристики
+                        <textarea id="specs" rows="4" placeholder="OLED, 120 Гц, 5G"></textarea>
+                    </label>
+                    <label>Особенности
+                        <textarea id="features" rows="4" placeholder="Что особенно важно в устройстве"></textarea>
+                    </label>
+                    <label>Дефекты
+                        <textarea id="defects" rows="4" placeholder="Если дефектов нет — оставьте пустым"></textarea>
+                    </label>
+                    <label>Фото передней стороны
+                        <input type="file" id="frontImage" accept="image/*">
+                    </label>
+                    <label>Фото задней стороны
+                        <input type="file" id="backImage" accept="image/*">
+                    </label>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" type="submit">Добавить телефон</button>
+                        <button class="btn btn-secondary" type="button" id="resetForm">Сбросить</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="panel-card" data-animate="fade-up" data-delay="100">
+                <div class="section-header">
+                    <span class="section-tag">Товары</span>
+                    <h2 class="section-title">Список телефонов</h2>
+                </div>
+                <div id="adminPhones" class="admin-list"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
