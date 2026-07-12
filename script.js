@@ -37,6 +37,34 @@ function readFileAsDataUrl(file) {
     });
 }
 
+function setImagePreview(previewElement, dataUrl, emptyText) {
+    if (!previewElement) return;
+    if (!dataUrl) {
+        previewElement.innerHTML = `<div class="camera-preview-empty">${emptyText}</div>`;
+        previewElement.classList.remove('is-filled');
+        return;
+    }
+
+    previewElement.innerHTML = `<img src="${dataUrl}" alt="Предпросмотр фотографии">`;
+    previewElement.classList.add('is-filled');
+}
+
+function handleImageSelection(inputId, previewId, emptyText) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    if (!input || !preview) return;
+
+    const file = input.files[0];
+    if (!file) {
+        setImagePreview(preview, '', emptyText);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(preview, reader.result, emptyText);
+    reader.readAsDataURL(file);
+}
+
 function createParticles() {
     const container = document.getElementById('particles');
     if (!container) return;
@@ -311,6 +339,8 @@ function fillFormForEdit(id) {
     document.getElementById('specs').value = phone.specs || '';
     document.getElementById('features').value = phone.features || '';
     document.getElementById('defects').value = phone.defects || '';
+    setImagePreview(document.getElementById('frontImagePreview'), phone.frontImage || '', 'Снимок появится здесь');
+    setImagePreview(document.getElementById('backImagePreview'), phone.backImage || '', 'Снимок появится здесь');
     document.querySelector('.phone-form button[type="submit"]').textContent = 'Сохранить изменения';
     document.getElementById('model').focus();
 }
@@ -326,10 +356,29 @@ function initAdminPage() {
     const form = document.getElementById('phoneForm');
     const resetButton = document.getElementById('resetForm');
     if (!form) return;
+
+    document.querySelectorAll('[data-trigger-image]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.triggerImage);
+            if (input) input.click();
+        });
+    });
+
+    document.getElementById('frontImage')?.addEventListener('change', () => {
+        handleImageSelection('frontImage', 'frontImagePreview', 'Снимок появится здесь');
+    });
+    document.getElementById('backImage')?.addEventListener('change', () => {
+        handleImageSelection('backImage', 'backImagePreview', 'Снимок появится здесь');
+    });
+
     form.addEventListener('submit', handleSubmit);
     resetButton?.addEventListener('click', () => {
         form.reset();
         document.getElementById('phoneId').value = '';
+        document.getElementById('frontImage').value = '';
+        document.getElementById('backImage').value = '';
+        setImagePreview(document.getElementById('frontImagePreview'), '', 'Снимок появится здесь');
+        setImagePreview(document.getElementById('backImagePreview'), '', 'Снимок появится здесь');
         document.querySelector('.phone-form button[type="submit"]').textContent = 'Добавить телефон';
     });
 

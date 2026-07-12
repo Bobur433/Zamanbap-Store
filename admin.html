@@ -8,9 +8,148 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+        }
+
+        .admin-auth-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(9, 15, 32, 0.95), rgba(15, 23, 42, 0.9));
+            backdrop-filter: blur(14px);
+        }
+
+        .admin-auth-overlay.is-hidden {
+            display: none;
+        }
+
+        .admin-auth-card {
+            width: min(100%, 430px);
+            padding: 36px 28px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .admin-auth-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 18px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            font-size: 32px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: #fff;
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+        }
+
+        .admin-auth-card h1 {
+            margin: 0 0 10px;
+            font-size: 24px;
+            color: #111827;
+        }
+
+        .admin-auth-card p {
+            margin: 0 0 20px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .admin-auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .admin-auth-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            font-size: 20px;
+            letter-spacing: 0.25em;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .admin-auth-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+        }
+
+        .admin-auth-input.is-invalid {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+        }
+
+        .admin-auth-error {
+            min-height: 20px;
+            margin: 0;
+            font-size: 14px;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .camera-field {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .camera-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .camera-trigger {
+            flex: 1;
+            min-width: 220px;
+            justify-content: center;
+        }
+
+        .camera-preview {
+            min-height: 180px;
+            display: grid;
+            place-items: center;
+            padding: 12px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 16px;
+            background: #f8fafc;
+            color: #64748b;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .camera-preview.is-filled {
+            padding: 0;
+        }
+
+        .camera-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .camera-preview-empty {
+            padding: 18px;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar" id="navbar">
+    <nav class="navbar" id="navbar" hidden>
         <div class="container nav-container">
             <a href="index.html" class="nav-logo">
                 <img class="logo-icon" src="logo.jpeg" alt="Zamanbap Store">
@@ -25,7 +164,29 @@
         </div>
     </nav>
 
-    <main class="admin-page">
+    <div id="adminAuthOverlay" class="admin-auth-overlay" aria-live="polite">
+        <div class="admin-auth-card">
+            <div class="admin-auth-icon">🔐</div>
+            <h1>Доступ к админ-панели</h1>
+            <p>Введите PIN-код, чтобы открыть управление товарами.</p>
+            <form id="adminAuthForm" class="admin-auth-form" novalidate>
+                <input
+                    type="password"
+                    id="adminPinInput"
+                    class="admin-auth-input"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="4"
+                    placeholder="••••"
+                    required
+                >
+                <button class="btn btn-primary" type="submit">Войти</button>
+                <p id="adminAuthError" class="admin-auth-error" role="alert"></p>
+            </form>
+        </div>
+    </div>
+
+    <main class="admin-page" id="adminPage" hidden>
         <div class="container admin-grid">
             <section class="panel-card" data-animate="fade-up">
                 <div class="section-header">
@@ -66,11 +227,27 @@
                     <label>Дефекты
                         <textarea id="defects" rows="4" placeholder="Если дефектов нет — оставьте пустым"></textarea>
                     </label>
-                    <label>Фото передней стороны
-                        <input type="file" id="frontImage" accept="image/*">
+                    <label class="camera-field">
+                        <span>Фото передней стороны</span>
+                        <div class="camera-actions">
+                            <button class="btn btn-primary camera-trigger" type="button" data-trigger-image="frontImage">📷 Сфотографировать переднюю сторону</button>
+                            <button class="btn btn-secondary" type="button" data-trigger-image="frontImage">Заменить</button>
+                        </div>
+                        <div id="frontImagePreview" class="camera-preview">
+                            <div class="camera-preview-empty">Снимок появится здесь</div>
+                        </div>
+                        <input type="file" id="frontImage" accept="image/*" capture="environment" hidden>
                     </label>
-                    <label>Фото задней стороны
-                        <input type="file" id="backImage" accept="image/*">
+                    <label class="camera-field">
+                        <span>Фото задней стороны</span>
+                        <div class="camera-actions">
+                            <button class="btn btn-primary camera-trigger" type="button" data-trigger-image="backImage">📷 Сфотографировать заднюю сторону</button>
+                            <button class="btn btn-secondary" type="button" data-trigger-image="backImage">Заменить</button>
+                        </div>
+                        <div id="backImagePreview" class="camera-preview">
+                            <div class="camera-preview-empty">Снимок появится здесь</div>
+                        </div>
+                        <input type="file" id="backImage" accept="image/*" capture="environment" hidden>
                     </label>
                     <div class="form-actions">
                         <button class="btn btn-primary" type="submit">Добавить телефон</button>
@@ -90,5 +267,60 @@
     </main>
 
     <script src="script.js"></script>
+    <script>
+        const ADMIN_PIN = '7761';
+        const authOverlay = document.getElementById('adminAuthOverlay');
+        const adminPage = document.getElementById('adminPage');
+        const authForm = document.getElementById('adminAuthForm');
+        const pinInput = document.getElementById('adminPinInput');
+        const authError = document.getElementById('adminAuthError');
+        const adminNavbar = document.getElementById('navbar');
+
+        function clearError() {
+            authError.textContent = '';
+            pinInput.classList.remove('is-invalid');
+        }
+
+        function showError(message) {
+            authError.textContent = message;
+            pinInput.classList.add('is-invalid');
+        }
+
+        function openAdminPanel() {
+            clearError();
+            authOverlay.classList.add('is-hidden');
+            adminPage.hidden = false;
+            adminNavbar.hidden = false;
+        }
+
+        function closeAdminPanel() {
+            authOverlay.classList.remove('is-hidden');
+            adminPage.hidden = true;
+            adminNavbar.hidden = true;
+        }
+
+        closeAdminPanel();
+
+        pinInput.addEventListener('input', () => {
+            pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
+            if (authError.textContent) {
+                clearError();
+            }
+        });
+
+        authForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const enteredPin = pinInput.value.trim();
+
+            if (enteredPin === ADMIN_PIN) {
+                openAdminPanel();
+                pinInput.value = '';
+            } else {
+                showError('Неверный PIN-код. Попробуйте ещё раз.');
+                pinInput.value = '';
+                pinInput.focus();
+            }
+        });
+    </script>
 </body>
 </html>
