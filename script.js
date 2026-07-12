@@ -357,6 +357,7 @@ function initAdminPage() {
     const resetButton = document.getElementById('resetForm');
     const addPhoneButton = document.getElementById('openAddPhoneButton');
     const submitButton = form?.querySelector('button[type="submit"]');
+    const formSection = form?.closest('section');
     if (!form) return;
 
     document.querySelectorAll('[data-trigger-image]').forEach((button) => {
@@ -373,14 +374,27 @@ function initAdminPage() {
         handleImageSelection('backImage', 'backImagePreview', 'Снимок появится здесь');
     });
 
-    addPhoneButton?.addEventListener('click', () => {
-        const formTop = form.getBoundingClientRect().top + window.scrollY - 90;
+    const openAddPhoneForm = (event) => {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const formTop = (formSection?.getBoundingClientRect().top || form.getBoundingClientRect().top) + window.scrollY - 90;
         window.scrollTo({ top: formTop, behavior: 'smooth' });
-        setTimeout(() => {
+
+        requestAnimationFrame(() => {
             document.getElementById('model')?.focus({ preventScroll: true });
-        }, 260);
-        submitButton.textContent = 'Добавить телефон';
-    });
+        });
+
+        if (submitButton) {
+            submitButton.textContent = 'Добавить телефон';
+        }
+    };
+
+    addPhoneButton?.addEventListener('click', openAddPhoneForm);
+    addPhoneButton?.addEventListener('touchend', openAddPhoneForm, { passive: false });
+    addPhoneButton?.addEventListener('pointerup', openAddPhoneForm);
 
     submitButton?.addEventListener('click', (event) => {
         if (!form.checkValidity()) {
