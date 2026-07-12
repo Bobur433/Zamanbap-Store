@@ -393,8 +393,10 @@ function initAdminPage() {
     };
 
     addPhoneButton?.addEventListener('click', openAddPhoneForm);
+    addPhoneButton?.addEventListener('touchstart', openAddPhoneForm, { passive: false });
     addPhoneButton?.addEventListener('touchend', openAddPhoneForm, { passive: false });
-    addPhoneButton?.addEventListener('pointerup', openAddPhoneForm);
+    addPhoneButton?.addEventListener('pointerdown', openAddPhoneForm);
+    addPhoneButton?.addEventListener('mousedown', openAddPhoneForm);
 
     submitButton?.addEventListener('click', (event) => {
         if (!form.checkValidity()) {
