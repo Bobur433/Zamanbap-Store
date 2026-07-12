@@ -77,6 +77,7 @@ html { scroll-behavior: smooth; font-size: 16px; }
 body { font-family: var(--font-family); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; overflow-x: hidden; transition: background .3s ease, color .3s ease; }
 a { text-decoration: none; color: inherit; }
 img { max-width: 100%; display: block; }
+button, input, select, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .container { max-width: var(--container-width); margin: 0 auto; padding: 0 var(--container-padding); }
 
 .loader { position: fixed; inset: 0; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; z-index: 10000; transition: opacity .6s ease, visibility .6s ease, background .3s ease; }
@@ -104,6 +105,8 @@ img { max-width: 100%; display: block; }
 .nav-actions { display: flex; align-items: center; gap: .75rem; }
 .theme-toggle { width: 44px; height: 44px; border-radius: 999px; background: var(--bg-glass); border: 1px solid var(--border-glass); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s ease; font-size: 1.2rem; }
 .theme-toggle:hover { background: var(--bg-glass-hover); }
+.admin-navbar .nav-actions { margin-left: auto; }
+.admin-navbar .theme-toggle { position: fixed; top: .8rem; right: .8rem; z-index: 1100; }
 
 .nav-cta { padding: .7rem 1rem; border-radius: 999px; background: var(--accent-blue); color: var(--text-primary); font-weight: 600; }
 .nav-toggle { display: none; background: none; border: 0; cursor: pointer; }
@@ -191,12 +194,20 @@ img { max-width: 100%; display: block; }
 
 .admin-page { padding: 6rem 0 4rem; }
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-.panel-card { padding: 1.5rem; }
+.panel-card { padding: 1.5rem; border-radius: 20px; }
 .phone-form { display: grid; gap: .9rem; }
 .phone-form label { display: grid; gap: .45rem; color: var(--text-secondary); }
-.phone-form input, .phone-form select, .phone-form textarea { width: 100%; padding: .8rem .9rem; border-radius: 14px; border: 1px solid var(--border-glass); background: var(--bg-glass); color: var(--text-primary); font: inherit; transition: all .2s ease; }
+.phone-form input, .phone-form select, .phone-form textarea { width: 100%; padding: .8rem .9rem; border-radius: 14px; border: 1px solid var(--border-glass); background: var(--bg-glass); color: var(--text-primary); font: inherit; transition: all .2s ease; font-size: 16px; min-height: 46px; }
 .phone-form input::placeholder, .phone-form textarea::placeholder { color: var(--text-muted); }
 .phone-form input:focus, .phone-form select:focus, .phone-form textarea:focus { outline: none; background: var(--bg-glass-hover); border-color: var(--accent-cyan); }
+.phone-form textarea { min-height: 96px; resize: vertical; }
+.camera-field { display: grid; gap: .6rem; }
+.camera-actions { display: flex; flex-wrap: wrap; gap: .6rem; width: 100%; }
+.camera-trigger, .camera-actions .btn, .form-actions .btn { min-height: 48px; }
+.camera-preview { min-height: 170px; border-radius: 14px; overflow: hidden; display: grid; place-items: center; background: var(--bg-glass); border: 1px dashed var(--border-glass); color: var(--text-secondary); }
+.camera-preview.is-filled { padding: 0; }
+.camera-preview img { width: 100%; height: 100%; object-fit: cover; }
+.camera-preview-empty { padding: 1rem; text-align: center; }
 
 .form-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .4rem; }
 .admin-list { display: grid; gap: .75rem; }
@@ -236,6 +247,12 @@ img { max-width: 100%; display: block; }
     .logo-icon { width: 36px; height: 36px; }
     .logo-text { font-size: .95rem; }
     .theme-toggle { width: 40px; height: 40px; font-size: 1rem; }
+    .nav-actions { gap: .5rem; }
+    .admin-form-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+    .admin-mobile-action { width: auto; }
+    .camera-actions { flex-direction: column; }
+    .camera-trigger { min-width: 100%; }
+    .camera-preview { min-height: 150px; }
     .hero { min-height: 85vh; padding-top: 5rem; }
     .hero-title { font-size: clamp(1.8rem, 5vw, 2.8rem); margin-bottom: .75rem; }
     .hero-slogan { font-size: .95rem; }
@@ -272,7 +289,10 @@ img { max-width: 100%; display: block; }
     .panel-card { padding: 1.25rem; }
     .phone-form { gap: .75rem; }
     .phone-form label { gap: .35rem; font-size: .9rem; }
-    .phone-form input, .phone-form select, .phone-form textarea { padding: .7rem .75rem; font-size: .9rem; border-radius: 10px; }
+    .phone-form input, .phone-form select, .phone-form textarea { padding: .7rem .75rem; font-size: 15px; border-radius: 10px; min-height: 44px; }
+    .camera-actions { flex-direction: column; }
+    .camera-actions .btn, .camera-trigger, .form-actions .btn { width: 100%; }
+    .camera-preview { min-height: 140px; }
     .form-actions { gap: .5rem; }
     .admin-item { flex-direction: column; align-items: flex-start; padding: .75rem; gap: .5rem; }
     .admin-item strong { font-size: .95rem; }
@@ -309,6 +329,11 @@ img { max-width: 100%; display: block; }
     .product-meta span { width: 100%; }
     .contact-details a { display: block; font-size: .9rem; }
     .form-actions { flex-direction: column; }
+    .admin-form-header { flex-direction: column; align-items: stretch; }
+    .admin-mobile-action { width: 100%; }
+    .camera-actions { flex-direction: column; }
+    .camera-trigger { min-width: 100%; }
+    .camera-preview { min-height: 140px; }
     .admin-item-actions { flex-direction: column; }
     .admin-item-actions .btn { width: 100%; }
     .detail-layout { gap: .75rem; }

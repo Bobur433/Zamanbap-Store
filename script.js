@@ -355,6 +355,8 @@ function deletePhone(id) {
 function initAdminPage() {
     const form = document.getElementById('phoneForm');
     const resetButton = document.getElementById('resetForm');
+    const addPhoneButton = document.getElementById('openAddPhoneButton');
+    const submitButton = form?.querySelector('button[type="submit"]');
     if (!form) return;
 
     document.querySelectorAll('[data-trigger-image]').forEach((button) => {
@@ -371,6 +373,22 @@ function initAdminPage() {
         handleImageSelection('backImage', 'backImagePreview', 'Снимок появится здесь');
     });
 
+    addPhoneButton?.addEventListener('click', () => {
+        const formTop = form.getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo({ top: formTop, behavior: 'smooth' });
+        setTimeout(() => {
+            document.getElementById('model')?.focus({ preventScroll: true });
+        }, 260);
+        submitButton.textContent = 'Добавить телефон';
+    });
+
+    submitButton?.addEventListener('click', (event) => {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            form.reportValidity();
+        }
+    });
+
     form.addEventListener('submit', handleSubmit);
     resetButton?.addEventListener('click', () => {
         form.reset();
@@ -379,7 +397,7 @@ function initAdminPage() {
         document.getElementById('backImage').value = '';
         setImagePreview(document.getElementById('frontImagePreview'), '', 'Снимок появится здесь');
         setImagePreview(document.getElementById('backImagePreview'), '', 'Снимок появится здесь');
-        document.querySelector('.phone-form button[type="submit"]').textContent = 'Добавить телефон';
+        submitButton.textContent = 'Добавить телефон';
     });
 
     document.getElementById('adminPhones')?.addEventListener('click', (event) => {

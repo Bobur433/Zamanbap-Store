@@ -149,7 +149,7 @@
     </style>
 </head>
 <body>
-    <nav class="navbar" id="navbar" hidden>
+    <nav class="navbar admin-navbar" id="navbar" hidden>
         <div class="container nav-container">
             <a href="index.html" class="nav-logo">
                 <img class="logo-icon" src="logo.jpeg" alt="Zamanbap Store">
@@ -189,9 +189,12 @@
     <main class="admin-page" id="adminPage" hidden>
         <div class="container admin-grid">
             <section class="panel-card" data-animate="fade-up">
-                <div class="section-header">
-                    <span class="section-tag">Добавить товар</span>
-                    <h2 class="section-title">Форма телефона</h2>
+                <div class="section-header admin-form-header">
+                    <div>
+                        <span class="section-tag">Добавить товар</span>
+                        <h2 class="section-title">Форма телефона</h2>
+                    </div>
+                    <button class="btn btn-secondary admin-mobile-action" type="button" id="openAddPhoneButton">Добавить телефон</button>
                 </div>
                 <form id="phoneForm" class="phone-form">
                     <input type="hidden" id="phoneId">
