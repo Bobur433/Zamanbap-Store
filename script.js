@@ -6,16 +6,15 @@ import {
     addDoc,
     getDocs,
     deleteDoc,
-    updateDoc,
     doc,
-    getDoc
+    updateDoc
 } from "./firebase.js";
 
 
 const THEME_KEY = "zamanbap_theme";
 
 
-/* ---------- helpers ---------- */
+// ---------- helpers ----------
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -27,236 +26,76 @@ function escapeHtml(value) {
 }
 
 
+function formatPrice(value) {
+    return `${new Intl.NumberFormat("ru-RU").format(Number(value || 0))} сом`;
+}
+
+
+// ---------- FIREBASE ----------
+
+
 async function getPhones() {
 
     const snapshot = await getDocs(
         collection(db, "phones")
     );
 
+
     return snapshot.docs.map(item => ({
         id: item.id,
         ...item.data()
     }));
-}
-
-
-
-function formatPrice(value) {
-
-    return `${new Intl.NumberFormat("ru-RU")
-        .format(Number(value || 0))} сом`;
 
 }
 
 
 
-/* ---------- images ---------- */
+// ---------- CATALOG ----------
 
-function loadImageElement(dataUrl) {
 
-    return new Promise((resolve, reject)=>{
+async function renderCatalog() {
 
-        const img = new Image();
+    const grid = document.getElementById("catalogGrid");
 
-        img.onload = ()=>resolve(img);
-
-        img.onerror = reject;
-
-        img.src = dataUrl;
-
-    });
-
-}
-
-
-
-function readFileAsDataUrl(file){
-
-    return new Promise((resolve,reject)=>{
-
-        const reader = new FileReader();
-
-        reader.onload = ()=>resolve(reader.result);
-
-        reader.onerror = reject;
-
-        reader.readAsDataURL(file);
-
-    });
-
-}
-
-
-
-function drawToJpeg(img,maxSide,quality){
-
-    let width = img.width;
-    let height = img.height;
-
-
-    if(width > maxSide || height > maxSide){
-
-        const ratio = Math.min(
-            maxSide / width,
-            maxSide / height
-        );
-
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-
-    }
-
-
-    const canvas=document.createElement("canvas");
-
-    canvas.width=width;
-    canvas.height=height;
-
-
-    const ctx=canvas.getContext("2d");
-
-    ctx.drawImage(img,0,0,width,height);
-
-
-    return canvas.toDataURL(
-        "image/jpeg",
-        quality
-    );
-
-}
-
-
-
-function sizeOfBase64(data){
-
-    return Math.round(
-        data.length * 3 / 4
-    );
-
-}
-
-
-
-async function compressImageFile(file){
-
-    if(!file) return "";
-
-
-    const raw = await readFileAsDataUrl(file);
-
-    const img = await loadImageElement(raw);
-
-
-    let result = drawToJpeg(
-        img,
-        1280,
-        0.75
-    );
-
-
-    let quality=0.75;
-    let side=1280;
-
-
-    while(sizeOfBase64(result)>320000){
-
-        quality-=0.1;
-        side*=0.85;
-
-
-        if(quality<0.35)
-            break;
-
-
-        result = drawToJpeg(
-            img,
-            side,
-            quality
-        );
-
-    }
-
-
-    return result;
-
-}
-
-
-
-function setImagePreview(el,url,text){
-
-    if(!el)return;
-
-
-    if(!url){
-
-        el.innerHTML =
-        `<div class="camera-preview-empty">
-        ${text}
-        </div>`;
-
-        return;
-
-    }
-
-
-    el.innerHTML =
-    `<img src="${url}">`;
-
-}
-
-
-
-/* ---------- catalog ---------- */
-
-
-async function renderCatalog(){
-
-    const grid=document.getElementById(
-        "catalogGrid"
-    );
-
-
-    if(!grid)return;
+    if (!grid) return;
 
 
     const phones = await getPhones();
 
 
 
-    if(!phones.length){
+    if (!phones.length) {
 
-        grid.innerHTML=`
+        grid.innerHTML = `
         <div class="empty-state">
-        <h3>Пока нет товаров</h3>
-        </div>`;
+            <h3>Пока нет товаров</h3>
+            <p>Добавьте телефоны через админ-панель.</p>
+        </div>
+        `;
 
         return;
-
     }
 
 
 
-    grid.innerHTML = phones.map(phone=>{
+    grid.innerHTML = phones.map(phone => `
 
-
-        return `
-
-        <article class="product-card">
-
+    <article class="product-card">
 
         <div class="product-image">
 
         ${
             phone.frontImage
             ?
-            `<img src="${phone.frontImage}">`
+            `<img src="${phone.frontImage}"
+            loading="lazy">`
             :
-            "Фото нет"
+            `<div class="photo-placeholder">
+            Фото нет
+            </div>`
         }
 
         </div>
-
 
 
         <p class="section-tag">
@@ -269,14 +108,28 @@ async function renderCatalog(){
         </h3>
 
 
-        <b>
+        <p class="product-price">
         ${formatPrice(phone.price)}
-        </b>
-
-
-        <p>
-        ${escapeHtml(phone.memory)}
         </p>
+
+
+
+        <div class="product-meta">
+
+            <span>
+            ${escapeHtml(phone.memory || "")}
+            </span>
+
+            <span>
+            ${escapeHtml(phone.color || "")}
+            </span>
+
+            <span>
+            ${escapeHtml(phone.state || "")}
+            </span>
+
+        </div>
+
 
 
         <a class="btn btn-primary"
@@ -285,195 +138,33 @@ async function renderCatalog(){
         </a>
 
 
-        </article>
-
-        `;
+    </article>
 
 
-    }).join("");
+    `).join("");
 
 }
 
 
 
+
+
+// ---------- PRODUCT PAGE ----------
 
 
 async function renderProductPage(){
 
-    const box=document.getElementById(
-        "productContent"
-    );
+    const container =
+    document.getElementById("productContent");
 
 
-    if(!box)return;
+    if(!container) return;
+
 
 
     const id =
-    new URLSearchParams(
-        location.search
-    ).get("id");
-
-
-
-    const snap =
-    await getDoc(
-        doc(db,"phones",id)
-    );
-
-
-
-    if(!snap.exists()){
-
-        box.innerHTML=
-        "<h2>Товар не найден</h2>";
-
-        return;
-
-    }
-
-
-    const phone={
-        id:snap.id,
-        ...snap.data()
-    };
-
-
-
-    box.innerHTML=`
-
-    <div class="detail-card">
-
-
-    <img src="${phone.frontImage || ""}">
-
-
-    <h1>
-    ${escapeHtml(phone.model)}
-    </h1>
-
-
-    <h2>
-    ${formatPrice(phone.price)}
-    </h2>
-
-
-    <p>
-    ${escapeHtml(phone.specs)}
-    </p>
-
-
-    </div>
-
-    `;
-
-
-}
-/* ---------- admin ---------- */
-
-
-const pendingImages = {
-    frontImage: "",
-    backImage: ""
-};
-
-
-function resetPendingImages(){
-
-    pendingImages.frontImage = "";
-    pendingImages.backImage = "";
-
-}
-
-
-
-async function handleImageSelection(
-    inputId,
-    previewId,
-    text,
-    key
-){
-
-    const input =
-    document.getElementById(inputId);
-
-
-    const preview =
-    document.getElementById(previewId);
-
-
-
-    if(!input || !preview) return;
-
-
-
-    const file = input.files[0];
-
-
-    if(!file){
-
-        pendingImages[key]="";
-
-        setImagePreview(
-            preview,
-            "",
-            text
-        );
-
-        return;
-
-    }
-
-
-
-    preview.innerHTML =
-    "Сжимаю фото...";
-
-
-
-    try{
-
-
-        const compressed =
-        await compressImageFile(file);
-
-
-
-        pendingImages[key]=compressed;
-
-
-        setImagePreview(
-            preview,
-            compressed,
-            text
-        );
-
-
-    }catch(error){
-
-        console.error(error);
-
-        alert(
-            "Ошибка обработки фото"
-        );
-
-    }
-
-}
-
-
-
-
-
-async function renderAdminPhones(){
-
-
-    const box =
-    document.getElementById(
-        "adminPhones"
-    );
-
-
-    if(!box)return;
+    new URLSearchParams(location.search)
+    .get("id");
 
 
 
@@ -482,69 +173,121 @@ async function renderAdminPhones(){
 
 
 
+    const phone =
+    phones.find(p=>p.id===id);
 
-    if(!phones.length){
 
-        box.innerHTML=
+
+    if(!phone){
+
+        container.innerHTML =
         `
         <div class="empty-state">
-        <h3>Список пуст</h3>
+        <h3>Телефон не найден</h3>
         </div>
         `;
 
         return;
-
     }
 
 
 
 
-    box.innerHTML =
-    phones.map(phone=>`
+    container.innerHTML =
+    `
 
+    <article class="detail-card">
 
-    <div class="admin-item">
-
-
-    <div>
-
-    <strong>
+    <h1>
     ${escapeHtml(phone.model)}
-    </strong>
+    </h1>
 
 
-    <p>
-    ${escapeHtml(phone.brand)}
-    -
+    <p class="product-price">
     ${formatPrice(phone.price)}
     </p>
 
 
-    </div>
+
+    <img 
+    src="${phone.frontImage || ""}"
+    style="max-width:400px;">
 
 
 
-    <div>
-
-
-    <button
-    class="btn btn-secondary"
-    data-action="edit"
-    data-id="${phone.id}">
-    Изменить
-    </button>
+    <p>
+    ${escapeHtml(phone.specs || "")}
+    </p>
 
 
 
-    <button
-    class="btn btn-primary"
-    data-action="delete"
-    data-id="${phone.id}">
-    Удалить
-    </button>
+    </article>
+
+    `;
 
 
-    </div>
+}
+// ---------- ADMIN ----------
+
+
+async function renderAdminPhones(){
+
+    const container =
+    document.getElementById("adminPhones");
+
+
+    if(!container) return;
+
+
+
+    const phones =
+    await getPhones();
+
+
+
+    if(!phones.length){
+
+        container.innerHTML =
+        `
+        <div class="empty-state">
+            <h3>Список пуст</h3>
+            <p>Добавьте первый телефон.</p>
+        </div>
+        `;
+
+        return;
+    }
+
+
+
+
+    container.innerHTML =
+    phones.map(phone=>`
+
+    <div class="admin-item">
+
+        <div>
+
+            <strong>
+            ${escapeHtml(phone.model)}
+            </strong>
+
+
+            <p>
+            ${escapeHtml(phone.brand)}
+            |
+            ${formatPrice(phone.price)}
+            </p>
+
+        </div>
+
+
+
+        <button 
+        class="btn btn-primary"
+        data-delete="${phone.id}">
+        Удалить
+        </button>
 
 
     </div>
@@ -556,10 +299,10 @@ async function renderAdminPhones(){
 
 
 
+// ---------- ADD PHONE ----------
 
 
 async function handleSubmit(event){
-
 
     event.preventDefault();
 
@@ -570,70 +313,62 @@ async function handleSubmit(event){
 
 
 
-    const model =
-    document.getElementById("model")
-    .value.trim();
+    const data = {
+
+        model:
+        document.getElementById("model").value.trim(),
+
+
+        brand:
+        document.getElementById("brand").value.trim(),
+
+
+        price:
+        document.getElementById("price").value.trim(),
+
+
+        memory:
+        document.getElementById("memory").value.trim(),
+
+
+        color:
+        document.getElementById("color").value.trim(),
+
+
+        state:
+        document.getElementById("state").value,
+
+
+        specs:
+        document.getElementById("specs").value.trim(),
+
+
+        features:
+        document.getElementById("features").value.trim(),
+
+
+        defects:
+        document.getElementById("defects").value.trim(),
+
+
+        frontImage:"",
+
+        backImage:"",
+
+
+        createdAt:
+        new Date()
+
+    };
 
 
 
-    const brand =
-    document.getElementById("brand")
-    .value.trim();
+    if(!data.model || !data.brand || !data.price){
 
-
-
-    const price =
-    document.getElementById("price")
-    .value.trim();
-
-
-
-    const memory =
-    document.getElementById("memory")
-    .value.trim();
-
-
-
-    const color =
-    document.getElementById("color")
-    .value.trim();
-
-
-
-    const state =
-    document.getElementById("state")
-    .value;
-
-
-
-    const specs =
-    document.getElementById("specs")
-    .value.trim();
-
-
-
-    const features =
-    document.getElementById("features")
-    .value.trim();
-
-
-
-    const defects =
-    document.getElementById("defects")
-    .value.trim();
-
-
-
-    if(!model || !brand || !price){
-
-        alert(
-            "Заполни модель, бренд и цену"
-        );
+        alert("Заполните модель, бренд и цену");
 
         return;
-
     }
-
 
 
 
@@ -643,232 +378,70 @@ async function handleSubmit(event){
 
         await addDoc(
             collection(db,"phones"),
-            {
-
-                model,
-                brand,
-                price,
-                memory,
-                color,
-                state,
-                specs,
-                features,
-                defects,
-
-
-                frontImage:
-                pendingImages.frontImage || "",
-
-
-                backImage:
-                pendingImages.backImage || "",
-
-
-                createdAt:
-                Date.now()
-
-            }
+            data
         );
 
 
+        alert("Телефон добавлен");
 
 
         form.reset();
 
 
-        resetPendingImages();
+        renderAdminPhones();
+
+
+        renderCatalog();
 
 
 
-        setImagePreview(
-            document.getElementById(
-                "frontImagePreview"
-            ),
-            "",
-            "Снимок появится здесь"
-        );
-
-
-
-        setImagePreview(
-            document.getElementById(
-                "backImagePreview"
-            ),
-            "",
-            "Снимок появится здесь"
-        );
-
-
-
-        await renderAdminPhones();
-
-        await renderCatalog();
-
-
-
-        alert(
-            "Телефон добавлен"
-        );
-
-
-
-    }catch(error){
+    }
+    catch(error){
 
         console.error(error);
 
-
-        alert(
-            "Ошибка сохранения"
-        );
+        alert("Ошибка сохранения");
 
     }
+
 
 
 }
 
 
 
+
+// ---------- DELETE ----------
 
 
 async function deletePhone(id){
 
 
     await deleteDoc(
-        doc(
-            db,
-            "phones",
-            id
-        )
+        doc(db,"phones",id)
     );
 
 
+    renderAdminPhones();
 
-    await renderAdminPhones();
-
-    await renderCatalog();
-
+    renderCatalog();
 
 }
 
 
 
 
-
-async function fillFormForEdit(id){
-
-
-    const snap =
-    await getDoc(
-        doc(
-            db,
-            "phones",
-            id
-        )
-    );
-
-
-
-    if(!snap.exists())
-        return;
-
-
-
-    const phone =
-    snap.data();
-
-
-
-    document.getElementById("model")
-    .value = phone.model || "";
-
-
-
-    document.getElementById("brand")
-    .value = phone.brand || "";
-
-
-
-    document.getElementById("price")
-    .value = phone.price || "";
-
-
-
-    document.getElementById("memory")
-    .value = phone.memory || "";
-
-
-
-    document.getElementById("color")
-    .value = phone.color || "";
-
-
-
-    document.getElementById("state")
-    .value = phone.state || "";
-
-
-
-    document.getElementById("specs")
-    .value = phone.specs || "";
-
-
-
-    document.getElementById("features")
-    .value = phone.features || "";
-
-
-
-    document.getElementById("defects")
-    .value = phone.defects || "";
-
-
-
-    document.getElementById("phoneId")
-    .value = id;
-
-
-}
-/* ---------- admin init ---------- */
+// ---------- EVENTS ----------
 
 
 function initAdminPage(){
 
 
     const form =
-    document.getElementById(
-        "phoneForm"
-    );
+    document.getElementById("phoneForm");
 
 
     if(!form) return;
-
-
-
-    document
-    .getElementById("frontImage")
-    ?.addEventListener(
-        "change",
-        ()=>handleImageSelection(
-            "frontImage",
-            "frontImagePreview",
-            "Снимок появится здесь",
-            "frontImage"
-        )
-    );
-
-
-
-    document
-    .getElementById("backImage")
-    ?.addEventListener(
-        "change",
-        ()=>handleImageSelection(
-            "backImage",
-            "backImagePreview",
-            "Снимок появится здесь",
-            "backImage"
-        )
-    );
 
 
 
@@ -879,57 +452,38 @@ function initAdminPage(){
 
 
 
-    document
-    .getElementById("adminPhones")
-    ?.addEventListener(
+    const list =
+    document.getElementById("adminPhones");
+
+
+
+    if(list){
+
+        list.addEventListener(
         "click",
-        async(event)=>{
+        event=>{
 
 
-            const btn =
-            event.target.closest(
-                "button[data-action]"
-            );
+            const button =
+            event.target.closest("[data-delete]");
 
 
-            if(!btn) return;
-
-
-
-            const id =
-            btn.dataset.id;
+            if(!button) return;
 
 
 
-            if(
-                btn.dataset.action === "delete"
-            ){
+            if(confirm("Удалить товар?")){
 
-                if(
-                    confirm(
-                    "Удалить товар?"
-                    )
-                ){
-
-                    await deletePhone(id);
-
-                }
+                deletePhone(
+                    button.dataset.delete
+                );
 
             }
 
 
+        });
 
-            if(
-                btn.dataset.action === "edit"
-            ){
-
-                await fillFormForEdit(id);
-
-            }
-
-
-        }
-    );
+    }
 
 
 
@@ -939,86 +493,46 @@ function initAdminPage(){
 
 
 
-
-/* ---------- theme ---------- */
+// ---------- THEME ----------
 
 
 function initTheme(){
 
 
-    const root =
-    document.documentElement;
-
-
-
     const button =
-    document.getElementById(
-        "themeToggle"
-    );
+    document.getElementById("themeToggle");
+
+
+    if(!button) return;
 
 
 
-    function apply(theme){
+    button.addEventListener(
+    "click",
+    ()=>{
 
 
-        root.setAttribute(
-            "data-theme",
-            theme
-        );
+        const html =
+        document.documentElement;
 
 
-    }
+        const current =
+        html.dataset.theme;
 
 
+        if(current==="dark"){
 
-    const saved =
-    localStorage.getItem(
-        THEME_KEY
-    )
-    ||
-    "dark";
-
-
-
-    apply(saved);
-
-
-
-    button?.addEventListener(
-        "click",
-        ()=>{
-
-
-            const current =
-            localStorage.getItem(
-                THEME_KEY
-            )
-            ||
-            "dark";
-
-
-
-            const next =
-            current === "dark"
-            ?
-            "light"
-            :
-            "dark";
-
-
-
-            localStorage.setItem(
-                THEME_KEY,
-                next
-            );
-
-
-
-            apply(next);
-
+            html.dataset.theme="light";
 
         }
-    );
+        else{
+
+            html.dataset.theme="dark";
+
+        }
+
+
+    });
 
 
 }
@@ -1026,99 +540,33 @@ function initTheme(){
 
 
 
-/* ---------- particles ---------- */
+
+// ---------- START ----------
 
 
-function createParticles(){
-
-
-    const box =
-    document.getElementById(
-        "particles"
-    );
-
-
-    if(!box)return;
-
-
-
-    for(
-        let i=0;
-        i<30;
-        i++
-    ){
-
-
-        const p =
-        document.createElement(
-            "div"
-        );
-
-
-        p.className =
-        "particle";
-
-
-        p.style.left =
-        Math.random()*100+"%";
-
-
-        p.style.top =
-        Math.random()*100+"%";
-
-
-        box.appendChild(p);
-
-
-    }
-
-
-}
-
-
-
-/* ---------- start ---------- */
-
-
-async function initApp(){
+function initApp(){
 
 
     initTheme();
 
 
-    createParticles();
+    if(document.getElementById("catalogGrid")){
 
-
-
-    if(
-        document.getElementById(
-            "catalogGrid"
-        )
-    ){
-
-        await renderCatalog();
+        renderCatalog();
 
     }
 
 
 
-    if(
-        document.getElementById(
-            "productContent"
-        )
-    ){
+    if(document.getElementById("productContent")){
 
-        await renderProductPage();
+        renderProductPage();
 
     }
 
 
 
-    if(
-        document.getElementById(
-            "phoneForm"
-        )
-    ){
+    if(document.getElementById("phoneForm")){
 
         initAdminPage();
 
@@ -1130,6 +578,6 @@ async function initApp(){
 
 
 document.addEventListener(
-    "DOMContentLoaded",
-    initApp
+"DOMContentLoaded",
+initApp
 );
