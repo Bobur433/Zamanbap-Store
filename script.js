@@ -159,6 +159,93 @@ async function renderAdminPhones() {
     `).join("");
 }
 
+// ---------- CAMERA / PHOTOS ----------
+
+const capturedImages = { frontImage: "", backImage: "" };
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
+
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+// Фото с камеры телефона может весить несколько МБ — сжимаем перед сохранением в Firestore (лимит документа 1 МБ)
+async function compressImage(file, maxDim = 1280, quality = 0.72) {
+    const dataUrl = await readFileAsDataUrl(file);
+    const img = await loadImage(dataUrl);
+
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale) || 1;
+    canvas.height = Math.round(img.height * scale) || 1;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    return canvas.toDataURL("image/jpeg", quality);
+}
+
+function renderImagePreview(inputId, dataUrl) {
+    const preview = document.getElementById(`${inputId}Preview`);
+    if (!preview) return;
+
+    if (dataUrl) {
+        preview.classList.add("is-filled");
+        preview.innerHTML = `<img src="${dataUrl}" alt="Превью фото">`;
+    } else {
+        preview.classList.remove("is-filled");
+        preview.innerHTML = `<div class="camera-preview-empty">Снимок появится здесь</div>`;
+    }
+}
+
+function resetCameraFields() {
+    capturedImages.frontImage = "";
+    capturedImages.backImage = "";
+    renderImagePreview("frontImage", "");
+    renderImagePreview("backImage", "");
+}
+
+function initCameraFields() {
+    document.querySelectorAll("[data-trigger-image]").forEach(button => {
+        button.addEventListener("click", () => {
+            document.getElementById(button.dataset.triggerImage)?.click();
+        });
+    });
+
+    ["frontImage", "backImage"].forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.addEventListener("change", async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            try {
+                const compressed = await compressImage(file);
+                capturedImages[inputId] = compressed;
+                renderImagePreview(inputId, compressed);
+            } catch (error) {
+                console.error("Не удалось обработать фото", error);
+                alert("Не удалось загрузить фото. Попробуйте ещё раз.");
+            } finally {
+                input.value = "";
+            }
+        });
+    });
+}
+
 // ---------- ADD ----------
 
 async function handleSubmit(e) {
@@ -175,8 +262,8 @@ async function handleSubmit(e) {
         specs: document.getElementById("specs").value.trim(),
         features: document.getElementById("features").value.trim(),
         defects: document.getElementById("defects").value.trim(),
-        frontImage: "",
-        backImage: "",
+        frontImage: capturedImages.frontImage,
+        backImage: capturedImages.backImage,
         createdAt: Date.now()
     };
 
@@ -189,6 +276,7 @@ async function handleSubmit(e) {
         await addDoc(collection(db, "phones"), phone);
         alert("Телефон добавлен");
         form.reset();
+        resetCameraFields();
         renderAdminPhones();
         renderCatalog();
     } catch (error) {
@@ -217,6 +305,12 @@ function initAdmin() {
     if (!form) return;
 
     form.addEventListener("submit", handleSubmit);
+    document.getElementById("resetForm")?.addEventListener("click", () => {
+        form.reset();
+        resetCameraFields();
+    });
+
+    initCameraFields();
 
     document.getElementById("adminPhones")?.addEventListener("click", e => {
         const btn = e.target.closest("[data-delete]");
