@@ -6,15 +6,23 @@ import {
     addDoc,
     getDocs,
     deleteDoc,
-    doc,
-    updateDoc
+    doc
 } from "./firebase.js";
-
 
 const THEME_KEY = "zamanbap_theme";
 
+// ---------- LOADER (аварийное скрытие) ----------
 
-// ---------- helpers ----------
+function hideLoader() {
+    const loader = document.getElementById('loader') || document.querySelector('.loader');
+    if (loader) loader.classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', hideLoader);
+window.addEventListener('load', hideLoader);
+setTimeout(hideLoader, 3000);
+
+// ---------- HELPERS ----------
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -25,559 +33,224 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
-
 function formatPrice(value) {
-    return `${new Intl.NumberFormat("ru-RU").format(Number(value || 0))} сом`;
+    return new Intl.NumberFormat("ru-RU").format(Number(value || 0)) + " сом";
 }
-
 
 // ---------- FIREBASE ----------
 
-
 async function getPhones() {
-
-    const snapshot = await getDocs(
-        collection(db, "phones")
-    );
-
-
+    const snapshot = await getDocs(collection(db, "phones"));
     return snapshot.docs.map(item => ({
         id: item.id,
         ...item.data()
     }));
-
 }
-
-
 
 // ---------- CATALOG ----------
 
-
 async function renderCatalog() {
-
     const grid = document.getElementById("catalogGrid");
-
     if (!grid) return;
 
-
-    const phones = await getPhones();
-
-
+    let phones = [];
+    try {
+        phones = await getPhones();
+    } catch (error) {
+        console.error('renderCatalog: getPhones failed', error);
+        grid.innerHTML = `<div class="empty-state"><h3>Ошибка загрузки каталога</h3><p>Проверьте подключение к интернету и попробуйте обновить страницу.</p></div>`;
+        return;
+    }
 
     if (!phones.length) {
-
         grid.innerHTML = `
-        <div class="empty-state">
-            <h3>Пока нет товаров</h3>
-            <p>Добавьте телефоны через админ-панель.</p>
-        </div>
+            <div class="empty-state">
+                <h3>Пока нет товаров</h3>
+                <p>Добавьте телефон через админку</p>
+            </div>
         `;
-
         return;
     }
-
-
 
     grid.innerHTML = phones.map(phone => `
-
-    <article class="product-card">
-
-        <div class="product-image">
-
-        ${
-            phone.frontImage
-            ?
-            `<img src="${phone.frontImage}"
-            loading="lazy">`
-            :
-            `<div class="photo-placeholder">
-            Фото нет
-            </div>`
-        }
-
-        </div>
-
-
-        <p class="section-tag">
-        ${escapeHtml(phone.brand)}
-        </p>
-
-
-        <h3>
-        ${escapeHtml(phone.model)}
-        </h3>
-
-
-        <p class="product-price">
-        ${formatPrice(phone.price)}
-        </p>
-
-
-
-        <div class="product-meta">
-
-            <span>
-            ${escapeHtml(phone.memory || "")}
-            </span>
-
-            <span>
-            ${escapeHtml(phone.color || "")}
-            </span>
-
-            <span>
-            ${escapeHtml(phone.state || "")}
-            </span>
-
-        </div>
-
-
-
-        <a class="btn btn-primary"
-        href="product.html?id=${phone.id}">
-        Подробнее
-        </a>
-
-
-    </article>
-
-
+        <article class="product-card">
+            <div class="product-image">
+                ${
+                    phone.frontImage
+                        ? `<img src="${phone.frontImage}" alt="${escapeHtml(phone.model)}" loading="lazy">`
+                        : `<div class="photo-placeholder">Фото нет</div>`
+                }
+            </div>
+            <p class="section-tag">${escapeHtml(phone.brand)}</p>
+            <h3>${escapeHtml(phone.model)}</h3>
+            <p class="product-price">${formatPrice(phone.price)}</p>
+            <div class="product-meta">
+                <span>${escapeHtml(phone.memory || '')}</span>
+                <span>${escapeHtml(phone.color || '')}</span>
+                <span>${escapeHtml(phone.state || '')}</span>
+            </div>
+            <a class="btn btn-primary" href="product.html?id=${phone.id}">Подробнее</a>
+        </article>
     `).join("");
-
 }
 
+// ---------- PRODUCT ----------
 
+async function renderProductPage() {
+    const container = document.getElementById("productContent");
+    if (!container) return;
 
+    const id = new URLSearchParams(location.search).get("id");
 
-
-// ---------- PRODUCT PAGE ----------
-
-
-async function renderProductPage(){
-
-    const container =
-    document.getElementById("productContent");
-
-
-    if(!container) return;
-
-
-
-    const id =
-    new URLSearchParams(location.search)
-    .get("id");
-
-
-
-    const phones =
-    await getPhones();
-
-
-
-    const phone =
-    phones.find(p=>p.id===id);
-
-
-
-    if(!phone){
-
-        container.innerHTML =
-        `
-        <div class="empty-state">
-        <h3>Телефон не найден</h3>
-        </div>
-        `;
-
+    let phones = [];
+    try {
+        phones = await getPhones();
+    } catch (error) {
+        console.error('renderProductPage: getPhones failed', error);
+        container.innerHTML = `<div class="empty-state"><h3>Ошибка загрузки</h3></div>`;
         return;
     }
 
+    const phone = phones.find(p => p.id === id);
 
+    if (!phone) {
+        container.innerHTML = `<div class="empty-state"><h3>Телефон не найден</h3></div>`;
+        return;
+    }
 
-
-    container.innerHTML =
-    `
-
-    <article class="detail-card">
-
-    <h1>
-    ${escapeHtml(phone.model)}
-    </h1>
-
-
-    <p class="product-price">
-    ${formatPrice(phone.price)}
-    </p>
-
-
-
-    <img 
-    src="${phone.frontImage || ""}"
-    style="max-width:400px;">
-
-
-
-    <p>
-    ${escapeHtml(phone.specs || "")}
-    </p>
-
-
-
-    </article>
-
+    container.innerHTML = `
+        <article class="detail-card">
+            <h1>${escapeHtml(phone.model)}</h1>
+            <p class="product-price">${formatPrice(phone.price)}</p>
+            <img src="${phone.frontImage || ''}" class="detail-image">
+            <p>${escapeHtml(phone.specs || '')}</p>
+        </article>
     `;
-
-
 }
+
 // ---------- ADMIN ----------
 
+async function renderAdminPhones() {
+    const box = document.getElementById("adminPhones");
+    if (!box) return;
 
-async function renderAdminPhones(){
-
-    const container =
-    document.getElementById("adminPhones");
-
-
-    if(!container) return;
-
-
-
-    const phones =
-    await getPhones();
-
-
-
-    if(!phones.length){
-
-        container.innerHTML =
-        `
-        <div class="empty-state">
-            <h3>Список пуст</h3>
-            <p>Добавьте первый телефон.</p>
-        </div>
-        `;
-
+    let phones = [];
+    try {
+        phones = await getPhones();
+    } catch (error) {
+        console.error('renderAdminPhones: getPhones failed', error);
+        box.innerHTML = `<div class="empty-state"><h3>Ошибка загрузки списка</h3></div>`;
         return;
     }
 
+    if (!phones.length) {
+        box.innerHTML = `<div class="empty-state"><h3>Список пуст</h3></div>`;
+        return;
+    }
 
-
-
-    container.innerHTML =
-    phones.map(phone=>`
-
-    <div class="admin-item">
-
-        <div>
-
-            <strong>
-            ${escapeHtml(phone.model)}
-            </strong>
-
-
-            <p>
-            ${escapeHtml(phone.brand)}
-            |
-            ${formatPrice(phone.price)}
-            </p>
-
+    box.innerHTML = phones.map(phone => `
+        <div class="admin-item">
+            <div>
+                <strong>${escapeHtml(phone.model)}</strong>
+                <p>${escapeHtml(phone.brand)} | ${formatPrice(phone.price)}</p>
+            </div>
+            <button class="btn btn-primary" data-delete="${phone.id}">Удалить</button>
         </div>
-
-
-
-        <button 
-        class="btn btn-primary"
-        data-delete="${phone.id}">
-        Удалить
-        </button>
-
-
-    </div>
-
-
     `).join("");
-
 }
 
+// ---------- ADD ----------
 
+async function handleSubmit(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
 
-// ---------- ADD PHONE ----------
-
-
-async function handleSubmit(event){
-
-    event.preventDefault();
-
-
-
-    const form =
-    event.currentTarget;
-
-
-
-    const data = {
-
-        model:
-        document.getElementById("model").value.trim(),
-
-
-        brand:
-        document.getElementById("brand").value.trim(),
-
-
-        price:
-        document.getElementById("price").value.trim(),
-
-
-        memory:
-        document.getElementById("memory").value.trim(),
-
-
-        color:
-        document.getElementById("color").value.trim(),
-
-
-        state:
-        document.getElementById("state").value,
-
-
-        specs:
-        document.getElementById("specs").value.trim(),
-
-
-        features:
-        document.getElementById("features").value.trim(),
-
-
-        defects:
-        document.getElementById("defects").value.trim(),
-
-
-        frontImage:"",
-
-        backImage:"",
-
-
-        createdAt:
-        new Date()
-
+    const phone = {
+        model: document.getElementById("model").value.trim(),
+        brand: document.getElementById("brand").value.trim(),
+        price: Number(document.getElementById("price").value),
+        memory: document.getElementById("memory").value.trim(),
+        color: document.getElementById("color").value.trim(),
+        state: document.getElementById("state").value,
+        specs: document.getElementById("specs").value.trim(),
+        features: document.getElementById("features").value.trim(),
+        defects: document.getElementById("defects").value.trim(),
+        frontImage: "",
+        backImage: "",
+        createdAt: Date.now()
     };
 
-
-
-    if(!data.model || !data.brand || !data.price){
-
+    if (!phone.model || !phone.brand || !phone.price) {
         alert("Заполните модель, бренд и цену");
-
         return;
     }
 
-
-
-
-    try{
-
-
-        await addDoc(
-            collection(db,"phones"),
-            data
-        );
-
-
+    try {
+        await addDoc(collection(db, "phones"), phone);
         alert("Телефон добавлен");
-
-
         form.reset();
-
-
         renderAdminPhones();
-
-
         renderCatalog();
-
-
-
+    } catch (error) {
+        console.error('handleSubmit failed', error);
+        alert("Ошибка сохранения. Смотри Console (F12).");
     }
-    catch(error){
-
-        console.error(error);
-
-        alert("Ошибка сохранения");
-
-    }
-
-
-
 }
-
-
-
 
 // ---------- DELETE ----------
 
-
-async function deletePhone(id){
-
-
-    await deleteDoc(
-        doc(db,"phones",id)
-    );
-
-
-    renderAdminPhones();
-
-    renderCatalog();
-
-}
-
-
-
-
-// ---------- EVENTS ----------
-
-
-function initAdminPage(){
-
-
-    const form =
-    document.getElementById("phoneForm");
-
-
-    if(!form) return;
-
-
-
-    form.addEventListener(
-        "submit",
-        handleSubmit
-    );
-
-
-
-    const list =
-    document.getElementById("adminPhones");
-
-
-
-    if(list){
-
-        list.addEventListener(
-        "click",
-        event=>{
-
-
-            const button =
-            event.target.closest("[data-delete]");
-
-
-            if(!button) return;
-
-
-
-            if(confirm("Удалить товар?")){
-
-                deletePhone(
-                    button.dataset.delete
-                );
-
-            }
-
-
-        });
-
+async function deletePhone(id) {
+    try {
+        await deleteDoc(doc(db, "phones", id));
+        renderAdminPhones();
+        renderCatalog();
+    } catch (error) {
+        console.error('deletePhone failed', error);
+        alert("Ошибка удаления. Смотри Console (F12).");
     }
-
-
-
-    renderAdminPhones();
-
 }
 
+// ---------- ADMIN INIT ----------
 
+function initAdmin() {
+    const form = document.getElementById("phoneForm");
+    if (!form) return;
+
+    form.addEventListener("submit", handleSubmit);
+
+    document.getElementById("adminPhones")?.addEventListener("click", e => {
+        const btn = e.target.closest("[data-delete]");
+        if (btn && confirm("Удалить товар?")) {
+            deletePhone(btn.dataset.delete);
+        }
+    });
+
+    renderAdminPhones();
+}
 
 // ---------- THEME ----------
 
+function initTheme() {
+    const html = document.documentElement;
+    const saved = localStorage.getItem(THEME_KEY);
 
-function initTheme(){
+    if (saved) html.dataset.theme = saved;
 
-
-    const button =
-    document.getElementById("themeToggle");
-
-
-    if(!button) return;
-
-
-
-    button.addEventListener(
-    "click",
-    ()=>{
-
-
-        const html =
-        document.documentElement;
-
-
-        const current =
-        html.dataset.theme;
-
-
-        if(current==="dark"){
-
-            html.dataset.theme="light";
-
-        }
-        else{
-
-            html.dataset.theme="dark";
-
-        }
-
-
+    document.getElementById("themeToggle")?.addEventListener("click", () => {
+        const theme = html.dataset.theme === "dark" ? "light" : "dark";
+        html.dataset.theme = theme;
+        localStorage.setItem(THEME_KEY, theme);
     });
-
-
 }
-
-
-
-
 
 // ---------- START ----------
 
-
-function initApp(){
-
-
+function initApp() {
     initTheme();
 
-
-    if(document.getElementById("catalogGrid")){
-
-        renderCatalog();
-
-    }
-
-
-
-    if(document.getElementById("productContent")){
-
-        renderProductPage();
-
-    }
-
-
-
-    if(document.getElementById("phoneForm")){
-
-        initAdminPage();
-
-    }
-
-
+    if (document.getElementById("catalogGrid")) renderCatalog();
+    if (document.getElementById("productContent")) renderProductPage();
+    if (document.getElementById("phoneForm")) initAdmin();
 }
 
-
-
-document.addEventListener(
-"DOMContentLoaded",
-initApp
-);
+document.addEventListener("DOMContentLoaded", initApp);

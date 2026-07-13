@@ -9,226 +9,148 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            margin: 0;
-        }
+        body { margin: 0; }
 
         .admin-auth-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: fixed; inset: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
             padding: 24px;
-            background: linear-gradient(135deg, rgba(9, 15, 32, 0.95), rgba(15, 23, 42, 0.9));
+            background:
+                radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.35), transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(124, 58, 237, 0.3), transparent 45%),
+                linear-gradient(135deg, rgba(5, 9, 20, 0.97), rgba(10, 16, 32, 0.95));
             backdrop-filter: blur(14px);
+            overflow: hidden;
         }
-
-        .admin-auth-overlay.is-hidden {
-            display: none;
+        .admin-auth-overlay.is-hidden { display: none; }
+        .admin-auth-overlay::before,
+        .admin-auth-overlay::after {
+            content: "";
+            position: absolute;
+            width: 320px; height: 320px;
+            border-radius: 50%;
+            filter: blur(70px);
+            animation: authOrbFloat 9s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .admin-auth-overlay::before {
+            top: -60px; left: -60px;
+            background: radial-gradient(circle, rgba(59, 130, 246, .5), transparent 70%);
+        }
+        .admin-auth-overlay::after {
+            bottom: -80px; right: -60px;
+            background: radial-gradient(circle, rgba(139, 92, 246, .45), transparent 70%);
+            animation-delay: -4s;
         }
 
         .admin-auth-card {
+            position: relative;
             width: min(100%, 430px);
             padding: 36px 28px;
             border-radius: 24px;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+            background: rgba(255, 255, 255, 0.97);
+            box-shadow: 0 24px 70px rgba(2, 6, 23, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: authCardIn 0.55s cubic-bezier(.22,1,.36,1) both;
         }
 
         .admin-auth-icon {
-            width: 70px;
-            height: 70px;
-            margin: 0 auto 18px;
-            display: grid;
-            place-items: center;
-            border-radius: 50%;
+            width: 70px; height: 70px; margin: 0 auto 18px;
+            display: grid; place-items: center; border-radius: 50%;
             font-size: 32px;
             background: linear-gradient(135deg, #2563eb, #7c3aed);
             color: #fff;
-            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35);
+            animation: authIconPulse 2.2s ease-in-out infinite;
         }
 
         .admin-auth-card h1 {
-            margin: 0 0 10px;
-            font-size: 24px;
-            color: #111827;
+            margin: 0 0 10px; font-size: 24px;
+            background: linear-gradient(115deg, #2563eb, #7c3aed);
+            -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
         }
+        .admin-auth-card p { margin: 0 0 20px; color: #6b7280; line-height: 1.6; }
 
-        .admin-auth-card p {
-            margin: 0 0 20px;
-            color: #6b7280;
-            line-height: 1.6;
-        }
-
-        .admin-auth-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        .admin-auth-form { display: flex; flex-direction: column; gap: 12px; }
 
         .admin-auth-input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 14px;
-            font-size: 20px;
-            letter-spacing: 0.25em;
-            text-align: center;
+            width: 100%; padding: 14px 16px;
+            border: 1px solid #d1d5db; border-radius: 14px;
+            font-size: 20px; letter-spacing: 0.25em; text-align: center;
             outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
-
         .admin-auth-input:focus {
             border-color: #2563eb;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+            transform: translateY(-1px);
         }
-
         .admin-auth-input.is-invalid {
             border-color: #ef4444;
             box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+            animation: authInputShake 0.4s ease;
         }
 
         .admin-auth-error {
-            min-height: 20px;
-            margin: 0;
-            font-size: 14px;
-            color: #dc2626;
-            font-weight: 600;
+            min-height: 20px; margin: 0; font-size: 14px;
+            color: #dc2626; font-weight: 600;
         }
 
-        .camera-field {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        .admin-auth-form .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            box-shadow: 0 12px 26px rgba(37, 99, 235, 0.32);
         }
 
-        .camera-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+        @keyframes authCardIn {
+            from { opacity: 0; transform: translateY(18px) scale(.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes authIconPulse {
+            0%, 100% { box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35); transform: scale(1); }
+            50% { box-shadow: 0 14px 38px rgba(124, 58, 237, 0.4); transform: scale(1.05); }
+        }
+        @keyframes authOrbFloat {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(20px, -20px); }
+        }
+        @keyframes authInputShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
         }
 
-        .camera-trigger {
-            flex: 1;
-            min-width: 220px;
-            justify-content: center;
-        }
+        .camera-field { display: flex; flex-direction: column; gap: 10px; }
+        .camera-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .camera-trigger { flex: 1; min-width: 220px; justify-content: center; }
 
         .camera-preview {
-            min-height: 180px;
-            display: grid;
-            place-items: center;
-            padding: 12px;
-            border: 1px dashed #cbd5e1;
-            border-radius: 16px;
-            background: #f8fafc;
-            color: #64748b;
-            text-align: center;
-            overflow: hidden;
+            min-height: 180px; display: grid; place-items: center; padding: 12px;
+            border: 1px dashed #cbd5e1; border-radius: 16px;
+            background: #f8fafc; color: #64748b; text-align: center; overflow: hidden;
         }
-
-        .camera-preview.is-filled {
-            padding: 0;
-        }
-
-        .camera-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .camera-preview-empty {
-            padding: 18px;
-            line-height: 1.5;
-        }
+        .camera-preview.is-filled { padding: 0; }
+        .camera-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .camera-preview-empty { padding: 18px; line-height: 1.5; }
 
         @media (max-width: 900px) {
-            .admin-page {
-                padding: 12px 0 24px;
+            .admin-page { padding: 12px 0 24px; }
+            .admin-grid { display: block; padding: 0 10px; }
+            .panel-card { padding: 16px; margin: 10px 0; border-radius: 18px; }
+            .admin-form-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+            .admin-mobile-action { width: 100%; min-height: 48px; border-radius: 999px; }
+            .phone-form label { gap: 6px; }
+            .phone-form input, .phone-form select, .phone-form textarea {
+                min-height: 48px; font-size: 16px; border-radius: 12px;
             }
-
-            .admin-grid {
-                display: block;
-                padding: 0 10px;
-            }
-
-            .panel-card {
-                padding: 16px;
-                margin: 10px 0;
-                border-radius: 18px;
-            }
-
-            .admin-form-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-
-            .admin-mobile-action {
-                width: 100%;
-                min-height: 48px;
-                border-radius: 999px;
-            }
-
-            .phone-form label {
-                gap: 6px;
-            }
-
-            .phone-form input,
-            .phone-form select,
-            .phone-form textarea {
-                min-height: 48px;
-                font-size: 16px;
-                border-radius: 12px;
-            }
-
-            .camera-actions {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .camera-trigger {
-                min-width: 100%;
-                min-height: 48px;
-            }
-
-            .camera-preview {
-                min-height: 150px;
-            }
-
-            .form-actions {
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .form-actions .btn {
-                width: 100%;
-                min-height: 48px;
-            }
-
-            .admin-item {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .admin-item-actions {
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .admin-item-actions .btn {
-                width: 100%;
-                min-height: 48px;
-            }
+            .camera-actions { flex-direction: column; gap: 8px; }
+            .camera-trigger { min-width: 100%; min-height: 48px; }
+            .camera-preview { min-height: 150px; }
+            .form-actions { flex-direction: column; gap: 8px; }
+            .form-actions .btn { width: 100%; min-height: 48px; }
+            .admin-item { flex-direction: column; align-items: flex-start; }
+            .admin-item-actions { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+            .admin-item-actions .btn { width: 100%; min-height: 48px; }
         }
     </style>
 </head>
@@ -355,6 +277,7 @@
 
     <script type="module" src="script.js"></script>
     <script>
+    (function () {
         const ADMIN_PIN = '7761';
         const authOverlay = document.getElementById('adminAuthOverlay');
         const adminPage = document.getElementById('adminPage');
@@ -362,6 +285,13 @@
         const pinInput = document.getElementById('adminPinInput');
         const authError = document.getElementById('adminAuthError');
         const adminNavbar = document.getElementById('navbar');
+
+        if (!authOverlay || !adminPage || !authForm || !pinInput || !authError || !adminNavbar) {
+            console.error('Admin auth: не найден один из элементов', {
+                authOverlay, adminPage, authForm, pinInput, authError, adminNavbar
+            });
+            return;
+        }
 
         function clearError() {
             authError.textContent = '';
@@ -390,9 +320,7 @@
 
         pinInput.addEventListener('input', () => {
             pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
-            if (authError.textContent) {
-                clearError();
-            }
+            if (authError.textContent) clearError();
         });
 
         authForm.addEventListener('submit', (event) => {
@@ -408,6 +336,7 @@
                 pinInput.focus();
             }
         });
+    })();
     </script>
 </body>
 </html>
